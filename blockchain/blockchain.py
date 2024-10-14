@@ -1,15 +1,87 @@
-from typing import Dict
+from typing import Dict, List
 from time import time
 import json
 import hashlib
+from urllib.parse import urlparse
+import requests
 
 class BlockChain(object):
     def __init__(self):
-        self.chain = []
-        self.current_transactions = []
+        self.chain: List[Dict] = []
+        self.current_transactions: List[Dict] = []
 
         #create the genesis block
         self.new_block(previous_hash="1", proof=10)
+
+    #Consensus start ===================================================================================
+        self.nodes = set()
+
+    def register_node(self, address: str) -> None:
+        """
+        Add a new node to the list of nodes
+        :param address: <str> Address of a node, dominio + porta Eg. '192.168.0.5:5000'
+        :return: None
+        """
+        parsed_url = urlparse(address)
+        self.nodes.add(parsed_url.netloc)
+
+    def valid_chain(self, chain: List[Dict]) -> bool:
+        """
+        Determine if a given block chain is valid
+        :param chain: <list> A blockchain
+        :return: <bool> True if valid, False otherwaise
+        """
+        last_block = chain[0]
+        current_index = 1
+
+        while current_index < len(chain):
+            block = chain[current_index]
+            print(f'{last_block}')
+            print(f'{block}')
+            print(f'\n----------\n')
+            #check if the hash of the previous block is correct
+            if block['previous_hash'] != self.hash(last_block):
+                return False
+            
+            #chack that the proof of the work is correct
+            if not self.valid_proof(last_block['proof'], block['proof']):
+                return False
+            
+            last_block = block
+            current_index += 1
+
+        return True
+
+    def resolve_conflict(self) -> bool:
+        """
+        This is our consensus algo, it resolve conflicts
+        by replacing our chain with the longest one in the network.
+        :return: <bool> True if our chain was replaced, False if not
+        """
+        neighbours = self.nodes
+        new_chain = None
+
+        #We are only looking for chain longer then ours
+        max_lenght = len(self.chain)
+
+        for node in neighbours:
+            response = requests.get(f'http://{node}/chain')
+
+            if response.status_code == 200:
+                length = response.json()['length']
+                chain = response.json()['chain']
+
+                #check if the is longer and the chain is valid
+                if length > max_lenght and self.valid_chain(chain):
+                    max_lenght = length
+                    new_chain = chain
+
+        # Replace our chain if we found a new valid longer then ours
+        if new_chain:
+            self.chain = new_chain
+            return True
+        return False
+    #Consensus end ===================================================================================
 
     def new_block(self, proof: int, previous_hash: str | None = None) -> Dict:
         """

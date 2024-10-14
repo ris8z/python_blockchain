@@ -7,7 +7,11 @@ from uuid import uuid4
 #   /mine               (to tell our server to mine a new block)
 #   /chain              (to return the full block chain)
 
-#our server is going to be a single node in our blockchain network
+
+# another two for consensus algo
+#   /nodes/register     (to accept a list of new nodes in form of url)
+#   /nodes/resolve      (to use our Consenus alog, so we know that we have the right chain)
+
 
 # Instantiate our Node
 app = Flask(__name__)
@@ -71,7 +75,42 @@ def full_chain():
     }
     return jsonify(response), 200
 
+@app.route('/nodes/register', methods=['POST'])
+def register_nodes():
+    valuse = request.get_json()
+
+    nodes = valuse.get('nodes')
+
+    if nodes is None:
+        return "Error: Plase supply a valid list of nodes", 400
+
+    for node in nodes:
+        blockchain.register_node(node)
+
+    response = {
+        'message': 'New nodes have been added',
+        'total_nodes': list(blockchain.nodes)
+    }
+
+    return jsonify(response), 201 
+
+@app.route('/nodes/resolve', methods=['GET'])
+def consensus():
+    replaced = blockchain.resolve_conflict()
+
+    if replaced:
+        response = {
+            'message': 'Our chain was replaced',
+            'new_chain': blockchain.chain
+        }
+    else:
+        response = {
+            'message': 'Our chain is authoritative',
+            'chain': blockchain.chain
+        }
+    return jsonify(response), 200
 
 #test with postman
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000)
+    p = int(input("Which port?"))
+    app.run(host="0.0.0.0", port=p)
