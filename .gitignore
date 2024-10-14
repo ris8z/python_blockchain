@@ -1,6 +1,5 @@
 # Ignora i file di ambiente
-.env
-.env.*
+env
 
 # Ignora le cartelle __pycache__
 __pycache__/
