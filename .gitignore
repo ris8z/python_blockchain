@@ -1,1 +1,12 @@
+# Ignora i file di ambiente
 .env
+.env.*
+
+# Ignora le cartelle __pycache__
+__pycache__/
+*.py[cod]
+
+# Ignora i file compilati di Python e altre cartelle di build
+*.pyc
+*.pyo
+*.pyd
